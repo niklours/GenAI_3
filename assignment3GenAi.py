@@ -234,19 +234,28 @@ def generate_from_prior(model, num_samples=64, device='cuda'):
 
 
 # %%
-torch.manual_seed(42)
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
-latent_dim = 20
-batch_size = 128
+#Run these commands for Task 1
+# torch.manual_seed(42)
+# device = 'cuda' if torch.cuda.is_available() else 'cpu'
+# latent_dim = 20
+# batch_size = 128
 
-train_loader, val_loader, test_loader = get_mnist_dataloaders(batch_size)
+# train_loader, val_loader, test_loader = get_mnist_dataloaders(batch_size)
 
-model = VAE(latent_dim)
-optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+# model = VAE(latent_dim)
+# optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+# model_20=model
 
-train_vae(model, train_loader, val_loader, optimizer, num_epochs=100, patience=10, device=device)
-test_vae_reconstruction_and_generation(model, test_loader, device=device)
-generate_from_prior(model, num_samples=64, device=device)
+
+# train_vae(model, train_loader, val_loader, optimizer, num_epochs=100, patience=10, device=device)
+# test_vae_reconstruction_and_generation(model, test_loader, device=device)
+# generate_from_prior(model, num_samples=64, device=device)
+
+# %% [markdown]
+# Save this model for tasks 3 and 4
+
+# %%
+
 
 # %% [markdown]
 # Task 2
@@ -481,35 +490,41 @@ def generate_from_prior(model, num_samples=64, device='cuda'):
     plt.show()
 
 # %%
-torch.manual_seed(42)
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
-latent_dim = 25
-batch_size = 128
+#Run these commands for Task 2
 
-train_loader, val_loader, test_loader = get_mnist_dataloaders(batch_size)
+# torch.manual_seed(42)
+# device = 'cuda' if torch.cuda.is_available() else 'cpu'
+# latent_dim = 25
+# batch_size = 128
 
-model = VAE(latent_dim)
-optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+# train_loader, val_loader, test_loader = get_mnist_dataloaders(batch_size)
 
-train_vae(model, train_loader, val_loader, optimizer, num_epochs=300, patience=10, device=device)
-test_vae_reconstruction_and_generation(model, test_loader, device=device)
-generate_from_prior(model, num_samples=64, device=device)
+# model = VAE(latent_dim)
+# optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+
+#Run these commands for Task 2
+
+# train_vae(model, train_loader, val_loader, optimizer, num_epochs=300, patience=10, device=device)
+# test_vae_reconstruction_and_generation(model, test_loader, device=device)
+# generate_from_prior(model, num_samples=64, device=device)
 
 # %% [markdown]
 # TASK 3
 
 # %%
-torch.manual_seed(42)
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
-latent_dim = 2
-batch_size = 128
+#Run these commands for task 3
 
-train_loader, val_loader, test_loader = get_mnist_dataloaders(batch_size)
+# torch.manual_seed(42)
+# device = 'cuda' if torch.cuda.is_available() else 'cpu'
+# latent_dim = 2
+# batch_size = 128
 
-model = VAE(latent_dim)
-optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+# train_loader, val_loader, test_loader = get_mnist_dataloaders(batch_size)
 
-train_elbo, val_elbo = train_vae(model, train_loader, val_loader, optimizer, device='cuda')
+# model = VAE(latent_dim)
+# optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+
+# train_elbo, val_elbo = train_vae(model, train_loader, val_loader, optimizer, device='cuda')
 
 # %%
 #model.load_state_dict(torch.load("vae_latent_2d.pth"))
@@ -546,27 +561,53 @@ def visualize(latents, labels, title_name, x_name, y_name):
     plt.grid(True)
     plt.show()
 
-latents,labels = get_latents(model, test_loader, device='cuda', threshold=1000)
-visualize(latents, labels, "Latent Dimention", "Latent dimention 1", "Latent dimention 2")
+
+#Run these commands for Task 3a
+
+# latents,labels = get_latents(model, test_loader, device='cuda', threshold=1000)
+# visualize(latents, labels, "Latent Dimention", "Latent dimention 1", "Latent dimention 2")
 
 # %%
-latent_dim = 10
-train_loader, val_loader, test_loader = get_mnist_dataloaders(batch_size)
+#Run these commands for task 3
 
-model_10 = VAE(latent_dim)
-optimizer = torch.optim.Adam(model_10.parameters(), lr=1e-4)
+# latent_dim = 10
+# train_loader, val_loader, test_loader = get_mnist_dataloaders(batch_size)
 
-train_elbo, val_elbo = train_vae(model_10, train_loader, val_loader, optimizer, device='cuda')
+# model_10 = VAE(latent_dim)
+# optimizer = torch.optim.Adam(model_10.parameters(), lr=1e-4)
+
+# train_elbo, val_elbo = train_vae(model_10, train_loader, val_loader, optimizer, device='cuda')
 
 # %%
-U, labels = get_latents(model_10, test_loader, device=device, threshold=1000)
-print(f"Shape of matrix U: {U.shape}")
+# U, labels = get_latents(model_10, test_loader, device=device, threshold=1000)
+# print(f"Shape of matrix U: {U.shape}")
 
 ## PCA analysis on matrix U
-pca = PCA(n_components=2)
-U_pca = pca.fit_transform(U)
+# pca = PCA(n_components=2)
+# U_pca = pca.fit_transform(U)
 
-visualize(U_pca, labels, "PCA Latent Dimention", "pca 1", "pca 2")
+#Run these commands for Task 3b
+# visualize(U_pca, labels, "PCA Latent Dimention", "pca 1", "pca 2")
+
+# %%
+# Sampling z from q(Z|x)
+def random_latent_sample(model, x, device='cuda'):
+    model.eval()
+    model = model.to(device)
+    x = x.to(device)
+    with torch.no_grad():
+        mu_z, logvar_z = model.encoder(x.unsqueeze(0))
+        std_z = torch.exp(0.5 * logvar_z)
+        eps = torch.randn_like(std_z)
+        z = mu_z + eps * std_z
+    return z.squeeze(0)
+
+# Decoding z into x
+def decode_latent(model, z, device='cuda'):
+    model.eval()
+    with torch.no_grad():
+        mu_x, logvar_x = model.decoder(z.unsqueeze(0))
+    return mu_x.squeeze(0).cpu()
 
 # %% [markdown]
 # Task 3c
@@ -615,8 +656,9 @@ def compute_interpolation(model, test_loader, num_rows=5, num_steps=6, device='c
     plt.title("Full Interpolation Grid (Task 3c)")
     plt.imshow(grid_img.permute(1, 2, 0), cmap='gray')
     plt.show()
+#Run these commands for Task 3c
 
-compute_interpolation(model, test_loader,num_rows=5, num_steps=6, device=device)    
+#compute_interpolation(model_20, test_loader,num_rows=5, num_steps=6, device=device)    
 
     
     
@@ -719,13 +761,15 @@ def compare_reconstructions(model, test_loader, latent_dim, device='cuda',num_sa
     plt.show()
 
 # %%
-compare_reconstructions(model, test_loader, latent_dim=20, device=device)
+#Run these commands for task 4a
+#compare_reconstructions(model_20, test_loader, latent_dim=20, device=device)
 
 # %% [markdown]
 # Using multiple samples for the Monte Carlo estimate significantly improves the quality of the generated reconstructions.
 
 # %%
-compare_reconstructions(model, test_loader, latent_dim=20, device=device,num_samples=5)
+#Run these commands for Task 4a with 5 sample MC
+#compare_reconstructions(model_20, test_loader, latent_dim=20, device=device,num_samples=5)
 
 # %%
 def elbo_left_half(x_left, decoder, infer_module, num_samples=1):
@@ -815,7 +859,9 @@ def complete_images(model, test_loader, latent_dim, device='cuda'):
     plt.show()
 
 # %%
-complete_images(model, test_loader, latent_dim=20, device=device)
+#Run these commands for Task 4b
+
+#complete_images(model, test_loader, latent_dim=20, device=device)
 
 
 # %%
