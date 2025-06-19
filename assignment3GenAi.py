@@ -15,17 +15,13 @@ from sklearn.decomposition import PCA
 
 # %%
 
-
-# ----------------------------
-# Encoder Network
-# ----------------------------
 class Encoder(nn.Module):
     def __init__(self, latent_dim):
         super(Encoder, self).__init__()
         self.conv = nn.Sequential(
-            nn.Conv2d(1, 32, kernel_size=4, stride=2, padding=1),  # 28x28 -> 14x14
+            nn.Conv2d(1, 32, kernel_size=4, stride=2, padding=1),  
             nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=1), # 14x14 -> 7x7
+            nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=1), 
             nn.ReLU()
         )
         self.flatten = nn.Flatten()
@@ -39,35 +35,29 @@ class Encoder(nn.Module):
         logvar = self.fc_logvar(x)
         return mu, logvar
 
-# ----------------------------
-# Decoder Network (Learned Variance)
-# ----------------------------
 class Decoder(nn.Module):
     def __init__(self, latent_dim):
         super(Decoder, self).__init__()
         self.fc = nn.Linear(latent_dim, 64 * 7 * 7)
         self.deconv_base = nn.Sequential(
-            nn.ConvTranspose2d(64, 32, kernel_size=4, stride=2, padding=1),  # 7x7 -> 14x14
+            nn.ConvTranspose2d(64, 32, kernel_size=4, stride=2, padding=1),  
             nn.ReLU(),
-            nn.ConvTranspose2d(32, 32, kernel_size=4, stride=2, padding=1),  # 14x14 -> 28x28
+            nn.ConvTranspose2d(32, 32, kernel_size=4, stride=2, padding=1),  
             nn.ReLU()
         )
 
         # Two output heads:
-        self.out_mu = nn.Conv2d(32, 1, kernel_size=3, padding=1)       # Mean image
-        self.out_logvar = nn.Conv2d(32, 1, kernel_size=3, padding=1)   # Log-variance
+        self.out_mu = nn.Conv2d(32, 1, kernel_size=3, padding=1)       
+        self.out_logvar = nn.Conv2d(32, 1, kernel_size=3, padding=1)   
 
     def forward(self, z):
         x = self.fc(z).view(-1, 64, 7, 7)
         x = self.deconv_base(x)
-        mu = torch.sigmoid(self.out_mu(x))  # constrain to [0,1] pixel space
-        logvar = self.out_logvar(x)         # unconstrained
-        logvar = torch.clamp(logvar, min=-6.0, max=3.0)  # Clamp safely here
+        mu = torch.sigmoid(self.out_mu(x))  
+        logvar = self.out_logvar(x)         
+        logvar = torch.clamp(logvar, min=-6.0, max=3.0) 
         return mu, logvar
 
-# ----------------------------
-# VAE Wrapper
-# ----------------------------
 class VAE(nn.Module):
     def __init__(self, latent_dim=20):
         super(VAE, self).__init__()
@@ -80,10 +70,10 @@ class VAE(nn.Module):
         return mu + eps * std
 
     def forward(self, x):
-        mu_z, logvar_z = self.encoder(x)                 # encoder outputs
-        z = self.reparameterize(mu_z, logvar_z)          # latent sample
-        mu_x, logvar_x = self.decoder(z)                 # decoder outputs
-        return mu_x, logvar_x, mu_z, logvar_z, z         # outputs needed for ELBO
+        mu_z, logvar_z = self.encoder(x)                 
+        z = self.reparameterize(mu_z, logvar_z)          
+        mu_x, logvar_x = self.decoder(z)                 
+        return mu_x, logvar_x, mu_z, logvar_z, z        
 
 # %%
 
@@ -106,15 +96,13 @@ def elbo_loss(x, mu_x, logvar_x, mu_z, logvar_z):
     logvar_x = logvar_x.view(B, -1)
 
     eps = 1e-6
-    var = torch.exp(logvar_x) + eps  # Safe variance
+    var = torch.exp(logvar_x) + eps 
 
-    # Numerically stable Gaussian log-likelihood
     recon_loss = 0.5 * (
         torch.log(2 * torch.pi * var) + ((x - mu_x) ** 2) / var
     )
     recon_loss = torch.sum(recon_loss, dim=1)
 
-    # KL divergence
     kl_div = -0.5 * torch.sum(1 + logvar_z - mu_z.pow(2) - logvar_z.exp(), dim=1)
 
     return torch.mean(recon_loss + kl_div)
@@ -145,10 +133,9 @@ def train_vae(model, train_loader, val_loader, optimizer,
         avg_train_loss = total_train_loss / len(train_loader)
         train_elbo.append(-avg_train_loss)
 
-        # --- Validation ---
         model.eval()
         total_val_loss = 0
-        with torch.no_grad():
+        with torch.no_grad(): # torch.no_grad() is used for evaluation
             for x_val, _ in val_loader:
                 x_val = x_val.to(device)
                 mu_x, logvar_x, mu_z, logvar_z, _ = model(x_val)
@@ -172,10 +159,8 @@ def train_vae(model, train_loader, val_loader, optimizer,
             print(f"Stopping early at epoch {epoch} due to no improvement in validation ELBO.")
             break
 
-    # Restore best model
     model.load_state_dict(best_model_state)
 
-    # Plot ELBO
     plt.plot(train_elbo, label='Train ELBO')
     plt.plot(val_elbo, label='Validation ELBO')
     plt.xlabel('Epoch')
@@ -194,17 +179,15 @@ def test_vae_reconstruction_and_generation(model, test_loader, device='cuda'):
     model.eval()
     model = model.to(device)
 
-    # Get a single batch from test set
     x_test, _ = next(iter(test_loader))
-    x_test = x_test[:32].to(device)  # use only first 32 for display
+    x_test = x_test[:32].to(device)  
     with torch.no_grad():
         mu_z, logvar_z = model.encoder(x_test)
         z = model.reparameterize(mu_z, logvar_z)
         mu_x, logvar_x = model.decoder(z)
         std_x = torch.exp(0.5 * logvar_x)
-        recon_x = mu_x + std_x * torch.randn_like(std_x)  # sample x' ~ N(mu, sigma²)
+        recon_x = mu_x + std_x * torch.randn_like(std_x)  
 
-    # Arrange originals and reconstructions side-by-side
     grid = torch.cat([x_test.cpu(), recon_x.cpu()], dim=0)
     grid_img = vutils.make_grid(grid, nrow=8, pad_value=1)
 
