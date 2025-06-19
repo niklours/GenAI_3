@@ -590,7 +590,7 @@ def visualize(latents, labels, title_name, x_name, y_name):
 # visualize(U_pca, labels, "PCA Latent Dimention", "pca 1", "pca 2")
 
 # %%
-# Sampling z from q(Z|x)
+
 def random_latent_sample(model, x, device='cuda'):
     model.eval()
     model = model.to(device)
@@ -602,7 +602,6 @@ def random_latent_sample(model, x, device='cuda'):
         z = mu_z + eps * std_z
     return z.squeeze(0)
 
-# Decoding z into x
 def decode_latent(model, z, device='cuda'):
     model.eval()
     with torch.no_grad():
@@ -633,21 +632,20 @@ def compute_interpolation(model, test_loader, num_rows=5, num_steps=6, device='c
         z2 = random_latent_sample(model, x2, device=device)
 
         row_images = []
-        row_images.append(x1)  # add starting image
+        row_images.append(x1)  # initial image
 
         for lamda in lamdas:
             linear_interpolation = lamda * z1 + (1 - lamda) * z2
             decode_z = decode_latent(model, linear_interpolation, device=device)
             row_images.append(decode_z)
 
-        row_images.append(x2)  # add target image
+        row_images.append(x2)  # target image
 
         row_tensor = torch.stack([
             img if isinstance(img, torch.Tensor) else img.data for img in row_images
         ])
         all_rows.append(row_tensor)
 
-    # Combine all rows into grid
     grid = torch.cat(all_rows, dim=0)
     grid_img = vutils.make_grid(grid, nrow=num_steps+2, pad_value=1)
 
