@@ -246,18 +246,15 @@ def generate_from_prior(model, num_samples=64, device='cuda'):
 # %%
 
 
-# ----------------------------
-# Encoder Network
-# ----------------------------
-class Encoder(nn.Module):
+class Encoder_task2(nn.Module):
     def __init__(self, latent_dim):
-        super(Encoder, self).__init__()
+        super(Encoder_task2, self).__init__()
         self.conv = nn.Sequential(
-            nn.Conv2d(1, 32, kernel_size=4, stride=2, padding=1),  # 28 -> 14
+            nn.Conv2d(1, 32, kernel_size=4, stride=2, padding=1), 
             nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=1), # 14 -> 7
+            nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=1),
             nn.ReLU(),
-            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1), # 7x7 -> 7x7 (added)
+            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1), # different from original
             nn.ReLU()
         )
         self.flatten = nn.Flatten()
@@ -271,12 +268,10 @@ class Encoder(nn.Module):
         logvar = self.fc_logvar(x)
         return mu, logvar
 
-# ----------------------------
-# Decoder Network (Using Beta)
-# ----------------------------
-class Decoder(nn.Module):
+
+class Decoder_task2(nn.Module):
     def __init__(self, latent_dim):
-        super(Decoder, self).__init__()
+        super(Decoder_task2, self).__init__()
         self.fc = nn.Linear(latent_dim, 64 * 7 * 7)
         self.deconv_base = nn.Sequential(
             nn.ConvTranspose2d(64, 32, kernel_size=4, stride=2, padding=1),
@@ -295,14 +290,11 @@ class Decoder(nn.Module):
         beta = F.softplus(self.beta_head(x)) + 1e-3
         return alpha, beta
 
-# ----------------------------
-# VAE Wrapper
-# ----------------------------
-class VAE(nn.Module):
+class VAE_task2(nn.Module):
     def __init__(self, latent_dim=20):
-        super(VAE, self).__init__()
-        self.encoder = Encoder(latent_dim)
-        self.decoder = Decoder(latent_dim)
+        super(VAE_task2, self).__init__()
+        self.encoder = Encoder_task2(latent_dim)
+        self.decoder = Decoder_task2(latent_dim)
 
     def reparameterize(self, mu, logvar):
         std = torch.exp(0.5 * logvar)
@@ -318,10 +310,10 @@ class VAE(nn.Module):
 # %%
 
 
-def get_mnist_dataloaders(batch_size=128):
+def get_mnist_dataloaders_task2(batch_size=128):
     def transform_fn(x):
         x = transforms.ToTensor()(x)
-        return (x * 0.98 + 0.01)  # now in [0.01, 0.99]
+        return (x * 0.98 + 0.01)  # to avoid numerical instability
     
     full_train_set = datasets.MNIST('./data', train=True, download=True, transform=transform_fn)
     test_set = datasets.MNIST('./data', train=False, download=True, transform=transform_fn)
@@ -332,7 +324,7 @@ def get_mnist_dataloaders(batch_size=128):
         DataLoader(test_set, batch_size=batch_size, shuffle=False)
     )
 
-def elbo_loss(x, alpha, beta, mu_z, logvar_z, beta_kl):
+def elbo_loss_task2(x, alpha, beta, mu_z, logvar_z, beta_kl):
     B = x.size(0)
     x = x.view(B, -1)
     alpha = alpha.view(B, -1)
@@ -342,7 +334,7 @@ def elbo_loss(x, alpha, beta, mu_z, logvar_z, beta_kl):
     x = torch.clamp(x, eps, 1 - eps)
 
     log_likelihood = (
-        torch.lgamma(alpha + beta)
+        torch.lgamma(alpha + beta) # using log gamma for numerical stability
         - torch.lgamma(alpha)
         - torch.lgamma(beta)
         + (alpha - 1) * torch.log(x)
@@ -356,7 +348,7 @@ def elbo_loss(x, alpha, beta, mu_z, logvar_z, beta_kl):
 
 # %%
 
-def train_vae(model, train_loader, val_loader, optimizer,
+def train_vae_task2(model, train_loader, val_loader, optimizer,
                                    num_epochs=100, patience=10, device='cuda'):
 
     model = model.to(device)
@@ -367,7 +359,7 @@ def train_vae(model, train_loader, val_loader, optimizer,
 
     for epoch in range(1, num_epochs + 1):
         #beta_kl = min(10.0, epoch / 50 * 10)
-        beta_kl = 10
+        beta_kl = 10 # b-vae
 
         model.train()
         total_train_loss = 0
@@ -375,7 +367,7 @@ def train_vae(model, train_loader, val_loader, optimizer,
             x_batch = x_batch.to(device)
             optimizer.zero_grad()
             mu_x, logvar_x, mu_z, logvar_z, _ = model(x_batch)
-            loss = elbo_loss(x_batch, mu_x, logvar_x, mu_z, logvar_z, beta_kl)
+            loss = elbo_loss_task2(x_batch, mu_x, logvar_x, mu_z, logvar_z, beta_kl)
             loss.backward()
             optimizer.step()
             total_train_loss += loss.item()
@@ -390,7 +382,7 @@ def train_vae(model, train_loader, val_loader, optimizer,
             for x_val, _ in val_loader:
                 x_val = x_val.to(device)
                 mu_x, logvar_x, mu_z, logvar_z, _ = model(x_val)
-                loss = elbo_loss(x_val, mu_x, logvar_x, mu_z, logvar_z, beta_kl)
+                loss = elbo_loss_task2(x_val, mu_x, logvar_x, mu_z, logvar_z, beta_kl)
                 total_val_loss += loss.item()
 
         avg_val_loss = total_val_loss / len(val_loader)
@@ -427,13 +419,12 @@ def train_vae(model, train_loader, val_loader, optimizer,
 
 # %%
 
-def test_vae_reconstruction_and_generation(model, test_loader, device='cuda'):
+def test_vae_reconstruction_and_generation_task2(model, test_loader, device='cuda'):
     model.eval()
     model = model.to(device)
 
-    # Get a single batch from test set
     x_test, _ = next(iter(test_loader))
-    x_test = x_test[:32].to(device)  # use only first 32 for display
+    x_test = x_test[:32].to(device)
     with torch.no_grad():
         mu_z, logvar_z = model.encoder(x_test)
         z = model.reparameterize(mu_z, logvar_z)
@@ -442,7 +433,6 @@ def test_vae_reconstruction_and_generation(model, test_loader, device='cuda'):
         beta = torch.clamp(beta, min=1e-3)
         recon_x = torch.distributions.Beta(alpha, beta).sample()
 
-    # Arrange originals and reconstructions side-by-side
     grid = torch.cat([x_test.cpu(), recon_x.cpu()], dim=0)
     grid_img = vutils.make_grid(grid, nrow=8, pad_value=1)
 
@@ -452,7 +442,7 @@ def test_vae_reconstruction_and_generation(model, test_loader, device='cuda'):
     plt.imshow(grid_img.permute(1, 2, 0), cmap='gray')
     plt.show()
 
-def generate_from_prior(model, num_samples=64, device='cuda'):
+def generate_from_prior_task2(model, num_samples=64, device='cuda'):
     model.eval()
     model = model.to(device)
 
@@ -480,16 +470,16 @@ def generate_from_prior(model, num_samples=64, device='cuda'):
 # latent_dim = 25
 # batch_size = 128
 
-# train_loader, val_loader, test_loader = get_mnist_dataloaders(batch_size)
+# train_loader, val_loader, test_loader = get_mnist_dataloaders_task2(batch_size)
 
-# model = VAE(latent_dim)
+# model = VAE_task2(latent_dim)
 # optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
 
-#Run these commands for Task 2
+# #Run these commands for Task 2
 
-# train_vae(model, train_loader, val_loader, optimizer, num_epochs=300, patience=10, device=device)
-# test_vae_reconstruction_and_generation(model, test_loader, device=device)
-# generate_from_prior(model, num_samples=64, device=device)
+# train_vae_task2(model, train_loader, val_loader, optimizer, num_epochs=300, patience=10, device=device)
+# test_vae_reconstruction_and_generation_task2(model, test_loader, device=device)
+# generate_from_prior_task2(model, num_samples=64, device=device)
 
 # %% [markdown]
 # TASK 3
